@@ -45,7 +45,7 @@
     </Reference>
   </ItemGroup>
 
-  <!-- UNITY MODULES — OnGUI / Rect / GUI / Widgets for drawing + settings UI -->
+  <!-- UNITY MODULES — OnGUI / Rect / GUI for drawing the marker -->
   <ItemGroup>
     <Reference Include="UnityEngine.IMGUIModule">
       <HintPath>$(RimWorldManaged)\UnityEngine.IMGUIModule.dll</HintPath>

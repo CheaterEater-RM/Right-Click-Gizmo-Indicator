@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
 namespace RightClickGizmoIndicator;
 
 /// <summary>
-/// Draws a small folded-corner marker on the bottom-right of any gizmo that has a right-click
-/// float menu. Patches <c>Command.GizmoOnGUIInt</c> — the single choke point both the normal
+/// Draws RimWorld's native top-right extra-options marker (<c>Designator_Dropdown.PlusTex</c>) on any
+/// gizmo that has a right-click float menu — the same marker vanilla puts on build buttons with
+/// material choices. Patches <c>Command.GizmoOnGUIInt</c> — the single choke point both the normal
 /// (<c>GizmoOnGUI</c>) and shrunk (<c>GizmoOnGUIShrunk</c>) render paths funnel through, and which
 /// every right-click-bearing Command subclass (Designator, Command_Toggle, Command_Ability, …)
 /// reaches via <c>base</c>. Because the patch lives on the shared base method, gizmos added by other
@@ -32,8 +34,6 @@ internal static class Patch_Command_GizmoOnGUIInt
     private static readonly ConditionalWeakTable<Gizmo, StrongBox<bool>> InstanceHasMenu =
         new ConditionalWeakTable<Gizmo, StrongBox<bool>>();
 
-    private static Texture2D foldTex;
-
     public static void Postfix(Command __instance, Rect butRect)
     {
         // Draw-only work; skip Layout / input passes (DrawGizmoGrid also early-outs on Layout).
@@ -41,16 +41,13 @@ internal static class Patch_Command_GizmoOnGUIInt
 
         try
         {
-            RightClickGizmoIndicator_Settings settings = RightClickGizmoIndicator_Mod.Settings;
-            if (settings == null || !settings.enabled) return;
-
             // A disabled gizmo's click is swallowed (returns Mouseover) and never opens a float menu.
             if (__instance.Disabled) return;
 
             if (!TypeMayHaveMenuCached(__instance.GetType())) return;   // free skip for the majority
             if (!HasMenuOnce(__instance)) return;
 
-            DrawCornerFold(butRect, settings);
+            DrawExtraOptionsMarker(butRect);
         }
         catch (Exception e)
         {
@@ -88,60 +85,19 @@ internal static class Patch_Command_GizmoOnGUIInt
         }
     }
 
-    private static void DrawCornerFold(Rect butRect, RightClickGizmoIndicator_Settings settings)
-    {
-        float size = butRect.width * settings.foldScale;
-        var r = new Rect(butRect.xMax - size, butRect.yMax - size, size, size);
-
-        Color prev = GUI.color;
-        GUI.color = settings.FoldTint;
-        GUI.DrawTexture(r, FoldTex);
-        GUI.color = prev;
-    }
-
-    private static Texture2D FoldTex => foldTex ?? (foldTex = BuildFoldTexture(32));
-
     /// <summary>
-    /// Builds a dog-ear: a white triangle filling the bottom-right corner of the marker square,
-    /// with a brighter crease along its hypotenuse so it reads as a lifted page corner. White so it
-    /// can be tinted (gray + opacity) at draw time. GUI.DrawTexture shows texture row 0 at the bottom
-    /// of the rect, so low-y / high-x pixels land in the displayed bottom-right corner.
+    /// Draws vanilla's own extra-options marker at the gizmo's top-right, identical to how the game
+    /// marks build buttons with material choices. <c>butRect</c> is built as
+    /// <c>new Rect(topLeft.x, topLeft.y, GetWidth(maxWidth), 75f)</c> in <c>Command.GizmoOnGUIInt</c>,
+    /// so <c>butRect.position</c>/<c>butRect.width</c> are exactly the <c>topLeft</c>/<c>width</c>
+    /// vanilla passes to <c>DrawExtraOptionsIcon</c> — placement matches pixel-for-pixel. We force
+    /// white and restore it so the icon renders at full tint regardless of any leftover GUI.color.
     /// </summary>
-    private static Texture2D BuildFoldTexture(int size)
+    private static void DrawExtraOptionsMarker(Rect butRect)
     {
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, mipChain: false)
-        {
-            name = "RCGI_CornerFold",
-            filterMode = FilterMode.Bilinear,
-            wrapMode = TextureWrapMode.Clamp,
-        };
-
-        var px = new Color[size * size];
-        float edgeThickness = Mathf.Max(2f, size * 0.10f);   // crease highlight width, in texture px
-        const float bodyAlpha = 0.55f;
-
-        for (int y = 0; y < size; y++)        // y = 0 is the bottom row when drawn
-        {
-            for (int x = 0; x < size; x++)    // x = 0 is the left column
-            {
-                float a;
-                if (y > x)
-                {
-                    a = 0f;                   // above the y = x crease: outside the fold, transparent
-                }
-                else
-                {
-                    float distToCrease = (x - y) * 0.70710678f;   // perpendicular distance to line y = x
-                    a = distToCrease <= edgeThickness
-                        ? Mathf.Lerp(1f, bodyAlpha, distToCrease / edgeThickness)
-                        : bodyAlpha;
-                }
-                px[y * size + x] = new Color(1f, 1f, 1f, a);
-            }
-        }
-
-        tex.SetPixels(px);
-        tex.Apply();
-        return tex;
+        Color prev = GUI.color;
+        GUI.color = Color.white;
+        Designator_Dropdown.DrawExtraOptionsIcon(butRect.position, butRect.width);
+        GUI.color = prev;
     }
 }

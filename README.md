@@ -1,14 +1,16 @@
 # Right-Click Gizmo Indicator
 
-Adds a small folded-corner marker to command buttons ("gizmos") that have a right-click menu, so hidden
+Adds RimWorld's own extra-options marker — the small top-right icon the game already puts on build
+buttons with material choices — to every command button ("gizmo") that has a right-click menu, so hidden
 right-click options are discoverable at a glance.
 
 - Marks **exactly** the buttons whose right-click opens a menu — using the same check the game itself uses.
-- Works for **vanilla and other mods'** gizmos automatically. No configuration or load-order setup.
+- Reuses the **native** marker (`Designator_Dropdown.PlusTex`), so it matches vanilla exactly and follows
+  any UI retexture mod automatically.
+- Works for **vanilla and other mods'** gizmos automatically. No settings, no configuration, no load-order
+  setup — install it and it just works.
 - **No performance cost:** the check is computed once per button and cached; there is no per-frame work.
 - Purely cosmetic — no gameplay change, no save data.
-
-**Settings:** toggle the marker on/off, adjust its size and opacity.
 
 **Requires:** [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077). RimWorld 1.6.
 

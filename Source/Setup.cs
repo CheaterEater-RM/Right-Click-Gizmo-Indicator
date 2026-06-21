@@ -4,8 +4,8 @@ using Verse;
 namespace RightClickGizmoIndicator;
 
 /// <summary>
-/// Harmony patch entry point. Fires after all Defs are loaded.
-/// Kept separate from the <see cref="RightClickGizmoIndicator_Mod"/> settings class (Hard Rule #7).
+/// Harmony patch entry point. Fires after all Defs are loaded. A dedicated
+/// <c>[StaticConstructorOnStartup]</c> init class, kept separate from any other mod type (Hard Rule #7).
 /// </summary>
 [StaticConstructorOnStartup]
 public static class RightClickGizmoIndicator_Init

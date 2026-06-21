@@ -6,9 +6,9 @@
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>Adds a small folded-corner marker to command buttons (gizmos) that have a right-click menu, so hidden right-click options are discoverable at a glance.
+  <description>Adds the same extra-options marker RimWorld already uses for build options — the small top-right icon on buttons with material choices — to every command button (gizmo) that has a right-click menu, so hidden right-click options are discoverable at a glance.
 
-Works for vanilla and other mods' gizmos automatically — no configuration or load-order setup required. The marker appears on exactly the buttons whose right-click opens a float menu, using the same check the game itself uses.
+Works for vanilla and other mods' gizmos automatically — no settings, no configuration, no load-order setup required. The marker appears on exactly the buttons whose right-click opens a float menu, using the same check the game itself uses, and reuses the game's own icon so it matches vanilla and any UI retexture mod exactly.
 
 Detection is computed once per button and cached, so there is no per-frame cost.
 
