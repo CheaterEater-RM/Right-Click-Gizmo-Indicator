@@ -21,6 +21,10 @@ namespace RightClickGizmoIndicator;
 /// Detection is static: whether a gizmo opens a right-click menu is constant over its lifetime
 /// (it's decided by constructor-set conditions), so we evaluate it at most once per instance and
 /// cache the result. There is no per-frame enumeration and no map scanning after warm-up.
+///
+/// One vanilla family — the allowed-area designators (<c>Designator_AreaAllowed</c>: Expand/Clear) —
+/// opens its float menu through <c>ProcessInput</c> rather than exposing <c>RightClickFloatMenuOptions</c>,
+/// so it's matched by type. Detection never calls <c>ProcessInput</c> (that would open the menu).
 /// </summary>
 [HarmonyPatch(typeof(Command), "GizmoOnGUIInt")]
 internal static class Patch_Command_GizmoOnGUIInt
@@ -44,8 +48,17 @@ internal static class Patch_Command_GizmoOnGUIInt
             // A disabled gizmo's click is swallowed (returns Mouseover) and never opens a float menu.
             if (__instance.Disabled) return;
 
-            if (!TypeMayHaveMenuCached(__instance.GetType())) return;   // free skip for the majority
-            if (!HasMenuOnce(__instance)) return;
+            // Allowed-area designators (Expand/Clear) open their area-picker float menu through
+            // ProcessInput, not RightClickFloatMenuOptions: on right-click GizmoGridDrawer finds their
+            // RightClickFloatMenuOptions empty and routes the event to ProcessInput instead, so the
+            // generic check below misses them. The menu always exists (the list always includes
+            // "Manage areas"), so detect by type. Never call ProcessInput to detect — it has side
+            // effects (it opens the menu).
+            if (!(__instance is Designator_AreaAllowed))
+            {
+                if (!TypeMayHaveMenuCached(__instance.GetType())) return;   // free skip for the majority
+                if (!HasMenuOnce(__instance)) return;
+            }
 
             DrawExtraOptionsMarker(butRect);
         }
