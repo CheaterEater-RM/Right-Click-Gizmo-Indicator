@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Analyzer>
+    <RightClickGizmoIndicator>
+        <Methods>
+            <li>RightClickGizmoIndicator.Patch_Command_GizmoOnGUIInt:Postfix</li>
+            <li>RightClickGizmoIndicator.Patch_Command_GizmoOnGUIInt:TypeMayHaveMenuCached</li>
+            <li>RightClickGizmoIndicator.Patch_Command_GizmoOnGUIInt:HasMenuOnce</li>
+            <li>RightClickGizmoIndicator.Patch_Command_GizmoOnGUIInt:EvaluateHasMenu</li>
+            <li>RightClickGizmoIndicator.Patch_Command_GizmoOnGUIInt:DrawExtraOptionsMarker</li>
+        </Methods>
+    </RightClickGizmoIndicator>
+</Analyzer>
