@@ -7,7 +7,7 @@
     <li>1.6</li>
   </supportedVersions>
   <description>Adds the same icon for right-click capable buildings to commands to show that they have alternative menus.</description>
-  <modVersion>1.0</modVersion>
+  <modVersion>1.01</modVersion>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>

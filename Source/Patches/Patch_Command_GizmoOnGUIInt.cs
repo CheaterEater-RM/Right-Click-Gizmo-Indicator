@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using HarmonyLib;
 using RimWorld;
 using UnityEngine;
@@ -18,9 +17,11 @@ namespace RightClickGizmoIndicator;
 /// reaches via <c>base</c>. Because the patch lives on the shared base method, gizmos added by other
 /// mods are covered automatically with no load-order coupling.
 ///
-/// Detection is static: whether a gizmo opens a right-click menu is constant over its lifetime
-/// (it's decided by constructor-set conditions), so we evaluate it at most once per instance and
-/// cache the result. There is no per-frame enumeration and no map scanning after warm-up.
+/// Detection is static: whether a gizmo opens a right-click menu is treated as constant per type, so we
+/// probe each gizmo type's getter at most once and cache the result by type — never per instance.
+/// (Selection gizmos are recreated every frame, so per-instance caching re-probed the getter every frame;
+/// some modded getters have side effects, so that meant message spam.) There is no per-frame enumeration
+/// and no map scanning after warm-up.
 ///
 /// One vanilla family — the allowed-area designators (<c>Designator_AreaAllowed</c>: Expand/Clear) —
 /// opens its float menu through <c>ProcessInput</c> rather than exposing <c>RightClickFloatMenuOptions</c>,
@@ -33,10 +34,13 @@ internal static class Patch_Command_GizmoOnGUIInt
     // A type that doesn't override it returns Enumerable.Empty and can never have a menu.
     private static readonly Dictionary<Type, bool> TypeMayHaveMenu = new Dictionary<Type, bool>();
 
-    // Tier 2 — per instance: the evaluated result, computed once and cached for the gizmo's life.
-    // ConditionalWeakTable keys weakly, so entries for transient gizmos are collected with them.
-    private static readonly ConditionalWeakTable<Gizmo, StrongBox<bool>> InstanceHasMenu =
-        new ConditionalWeakTable<Gizmo, StrongBox<bool>>();
+    // Tier 2 — per TYPE: probed at most once per type, reused for all instances of that type.
+    // Selection gizmos are recreated every frame (Thing.GetGizmos yields new instances), so a per-instance
+    // cache missed every frame and re-probed the getter every frame. Some modded getters have user-visible
+    // side effects in their first lines (e.g. Quick Stockpile Creation shows a NegativeEvent when the
+    // selected item is already at max priority), so per-frame probing = message spam. Menu presence is
+    // constant per type, so one probe per type suffices. See docs/IMPLEMENTATION.md.
+    private static readonly Dictionary<Type, bool> TypeHasMenu = new Dictionary<Type, bool>();
 
     public static void Postfix(Command __instance, Rect butRect)
     {
@@ -57,7 +61,7 @@ internal static class Patch_Command_GizmoOnGUIInt
             if (!(__instance is Designator_AreaAllowed))
             {
                 if (!TypeMayHaveMenuCached(__instance.GetType())) return;   // free skip for the majority
-                if (!HasMenuOnce(__instance)) return;
+                if (!HasMenuOnceForType(__instance)) return;
             }
 
             DrawExtraOptionsMarker(butRect);
@@ -79,22 +83,39 @@ internal static class Patch_Command_GizmoOnGUIInt
         return result;
     }
 
-    private static bool HasMenuOnce(Gizmo g)
+    private static bool HasMenuOnceForType(Gizmo g)
     {
-        // Menu existence doesn't change over an instance's life, so evaluate exactly once.
-        return InstanceHasMenu.GetValue(g, EvaluateHasMenu).Value;
+        // Menu presence is constant per type, so probe each type's getter exactly once and reuse the
+        // result for every instance of that type. Per-instance caching was useless for selection gizmos,
+        // which Thing.GetGizmos recreates every frame — see the TypeHasMenu note above. First-probed
+        // instance wins for the type (an accepted imperfection; see docs/IMPLEMENTATION.md).
+        Type t = g.GetType();
+        if (!TypeHasMenu.TryGetValue(t, out bool result))
+        {
+            result = EvaluateHasMenu(g);
+            TypeHasMenu[t] = result;
+        }
+        return result;
     }
 
-    private static StrongBox<bool> EvaluateHasMenu(Gizmo g)
+    private static bool EvaluateHasMenu(Gizmo g)
     {
+        // Some modded getters call Messages.Message as a side effect (e.g. Quick Stockpile Creation warns
+        // when the selected item is already at max priority). Mute player-facing messages for the duration
+        // of this one probe so detection stays invisible. See Patch_Messages_Suppress.
+        Patch_Messages_Suppress.Push();
         try
         {
             IEnumerable<FloatMenuOption> opts = g.RightClickFloatMenuOptions;   // mirrors the game's own check
-            return new StrongBox<bool>(opts != null && opts.FirstOrDefault() != null);
+            return opts != null && opts.FirstOrDefault() != null;
         }
         catch
         {
-            return new StrongBox<bool>(false);   // defensive: a buggy modded override must not break drawing
+            return false;   // defensive: a buggy modded override must not break drawing
+        }
+        finally
+        {
+            Patch_Messages_Suppress.Pop();
         }
     }
 
